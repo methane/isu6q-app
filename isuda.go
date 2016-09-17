@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Songmu/strrand"
 	_ "github.com/go-sql-driver/mysql"
@@ -70,6 +71,11 @@ func authenticate(w http.ResponseWriter, r *http.Request) error {
 }
 
 func initializeHandler(w http.ResponseWriter, r *http.Request) {
+	noprofile := r.URL.Query().Get("noprofile")
+	if noprofile == "" {
+		StartProfile(90 * time.Second)
+	}
+
 	_, err := db.Exec(`DELETE FROM entry WHERE id > 7101`)
 	panicIf(err)
 
@@ -325,7 +331,7 @@ func htmlify(w http.ResponseWriter, r *http.Request, content string) string {
 	for _, entry := range entries {
 		keywords = append(keywords, regexp.QuoteMeta(entry.Keyword))
 	}
-	re := regexp.MustCompile("("+strings.Join(keywords, "|")+")")
+	re := regexp.MustCompile("(" + strings.Join(keywords, "|") + ")")
 	kw2sha := make(map[string]string)
 	content = re.ReplaceAllStringFunc(content, func(kw string) string {
 		kw2sha[kw] = "isuda_" + fmt.Sprintf("%x", sha1.Sum([]byte(kw)))
@@ -333,7 +339,7 @@ func htmlify(w http.ResponseWriter, r *http.Request, content string) string {
 	})
 	content = html.EscapeString(content)
 	for kw, hash := range kw2sha {
-		u, err := r.URL.Parse(baseUrl.String()+"/keyword/" + pathURIEscape(kw))
+		u, err := r.URL.Parse(baseUrl.String() + "/keyword/" + pathURIEscape(kw))
 		panicIf(err)
 		link := fmt.Sprintf("<a href=\"%s\">%s</a>", u, html.EscapeString(kw))
 		content = strings.Replace(content, hash, link, -1)
