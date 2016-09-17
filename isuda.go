@@ -329,7 +329,7 @@ func Startup() {
 		var k string
 		err := rows.Scan(&k)
 		panicIf(err)
-		kws = append(kws, Keyword{k, keywordLink(k)})
+		kws = append(kws, Keyword{Key: k, Link: keywordLink(k)})
 	}
 	rows.Close()
 

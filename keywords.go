@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/sha1"
+	"fmt"
+	"html"
 	"log"
 	"sort"
 	"strings"
@@ -9,8 +12,9 @@ import (
 )
 
 type Keyword struct {
-	Key  string
-	Link string
+	Key    string
+	Link   string
+	holder string
 }
 
 type KeywordArray []Keyword
@@ -19,24 +23,35 @@ var (
 	mKwControl sync.Mutex
 	kwdList    KeywordArray
 
-	mKwReplacer sync.RWMutex
-	kwReplacer  *strings.Replacer
+	mKwReplacer                  sync.RWMutex
+	kwReplacer1st, kwReplacer2nd *strings.Replacer
 )
 
 func updateReplacer() {
-	reps := make([]string, 0, len(kwdList)*2)
-	for _, k := range kwdList {
-		reps = append(reps, k.Key)
-		reps = append(reps, k.Link)
+	reps1 := make([]string, 0, len(kwdList)*2)
+	reps2 := make([]string, 0, len(kwdList)*2)
+	for i, k := range kwdList {
+		if k.holder == "" {
+			k.holder = fmt.Sprintf("isuda_%x", sha1.Sum([]byte(k.Key)))
+			kwdList[i].holder = k.holder
+		}
+
+		reps1 = append(reps1, k.Key)
+		reps1 = append(reps1, k.holder)
+
+		reps2 = append(reps2, k.holder)
+		reps2 = append(reps2, k.Link)
 	}
-	rl := strings.NewReplacer(reps...)
+	r1 := strings.NewReplacer(reps1...)
+	r2 := strings.NewReplacer(reps2...)
 	mKwReplacer.Lock()
-	kwReplacer = rl
+	kwReplacer1st = r1
+	kwReplacer2nd = r2
 	mKwReplacer.Unlock()
 }
 
 func AddKeyword(key, link string) {
-	k := Keyword{key, link}
+	k := Keyword{Key: key, Link: link}
 
 	mKwControl.Lock()
 	kwdList = append(kwdList, k)
@@ -78,9 +93,12 @@ func InitKeyword(kws KeywordArray) {
 
 func ReplaceKeyword(c string) string {
 	mKwReplacer.RLock()
-	rp := kwReplacer
+	r1 := kwReplacer1st
+	r2 := kwReplacer2nd
 	mKwReplacer.RUnlock()
-	return rp.Replace(c)
+	x := r1.Replace(c)
+	x = html.EscapeString(x)
+	return r2.Replace(x)
 }
 
 var _ sort.Interface = KeywordArray{}
