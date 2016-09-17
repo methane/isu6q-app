@@ -27,8 +27,8 @@ var (
 	cpuProfileFile    = "/tmp/cpu.pprof"
 	memProfileFile    = "/tmp/mem.pprof"
 	blockProfileFile  = "/tmp/block.pprof"
-	onStartProfileCmd = "/home/isucon/on-start-profile"
-	onEndProfileCmd   = "/home/isucon/on-end-profile"
+	onStartProfileCmd = "/home/isucon/bench-tools/on-start-profile"
+	onEndProfileCmd   = "/home/isucon/bench-tools/on-end-profile"
 )
 
 func callOnStartProfile() {
