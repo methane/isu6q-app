@@ -347,7 +347,8 @@ func htmlify(w http.ResponseWriter, r *http.Request, content string) string {
 func loadStars(keyword string) []*Star {
 	v := url.Values{}
 	v.Set("keyword", keyword)
-	resp, err := http.Get(fmt.Sprintf("%s/stars", isutarEndpoint) + "?" + v.Encode())
+	url := fmt.Sprintf("%s/stars", isutarEndpoint) + "?" + v.Encode()
+	resp, err := http.Get(url)
 	panicIf(err)
 	defer resp.Body.Close()
 
@@ -355,7 +356,11 @@ func loadStars(keyword string) []*Star {
 		Result []*Star `json:result`
 	}
 	err = json.NewDecoder(resp.Body).Decode(&data)
-	panicIf(err)
+	if err != nil {
+		log.Println(url)
+		log.Println(data)
+		//panicIf(err)
+	}
 	return data.Result
 }
 
@@ -393,18 +398,6 @@ func getSession(w http.ResponseWriter, r *http.Request) *sessions.Session {
 }
 
 func main() {
-	host := os.Getenv("ISUDA_DB_HOST")
-	if host == "" {
-		host = "localhost"
-	}
-	portstr := os.Getenv("ISUDA_DB_PORT")
-	if portstr == "" {
-		portstr = "3306"
-	}
-	port, err := strconv.Atoi(portstr)
-	if err != nil {
-		log.Fatalf("Failed to read DB port number from an environment variable ISUDA_DB_PORT.\nError: %s", err.Error())
-	}
 	user := os.Getenv("ISUDA_DB_USER")
 	if user == "" {
 		user = "root"
@@ -414,20 +407,28 @@ func main() {
 	if dbname == "" {
 		dbname = "isuda"
 	}
+	dbunix := os.Getenv("ISUDA_DB_UNIX")
+	if dbunix == "" {
+		dbunix = "/var/run/mysqld/mysqld.sock"
+	}
 
-	db, err = sql.Open("mysql", fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s?loc=Local&parseTime=true&interpolateParams=true&collation=utf8mb4_bin",
-		user, password, host, port, dbname,
-	))
+	dsn := fmt.Sprintf(
+		"%s:%s@unix(%s)/%s?loc=Local&parseTime=true&interpolateParams=true&collation=utf8mb4_bin",
+		user, password, dbunix, dbname)
+	log.Println("dsn: ", dsn)
+	var err error
+	db, err = sql.Open("mysql", dsn)
+	panicIf(err)
 	db.SetMaxOpenConns(8)
 	db.SetMaxIdleConns(8)
 
 	for {
 		err := db.Ping()
-		if err != nil {
+		if err == nil {
 			break
 		}
 		log.Println(err)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	HostName = os.Getenv("ISUHOST")

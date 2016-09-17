@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 	"net/http"
 	"net/url"
-	"os"
-	"runtime/debug"
+	//"os"
+	//"runtime/debug"
 )
 
 func prepareHandler(fn func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
@@ -21,13 +21,13 @@ func prepareHandler(fn func(http.ResponseWriter, *http.Request)) http.HandlerFun
 
 func myHandler(fn func(http.ResponseWriter, *http.Request)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				fmt.Fprintf(os.Stderr, "%+v", err)
-				debug.PrintStack()
-				http.Error(w, http.StatusText(500), 500)
-			}
-		}()
+		//defer func() {
+		//	if err := recover(); err != nil {
+		//		fmt.Fprintf(os.Stderr, "%+v", err)
+		//		debug.PrintStack()
+		//		http.Error(w, http.StatusText(500), 500)
+		//	}
+		//}()
 		prepareHandler(fn)(w, r)
 	}
 }

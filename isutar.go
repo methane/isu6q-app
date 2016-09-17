@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
@@ -73,18 +72,12 @@ func starsPostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	host := os.Getenv("ISUTAR_DB_HOST")
-	if host == "" {
-		host = "localhost"
+	var err error
+	dbunix := os.Getenv("ISUDA_DB_UNIX")
+	if dbunix == "" {
+		dbunix = "/var/run/mysqld/mysqld.sock"
 	}
-	portstr := os.Getenv("ISUTAR_DB_PORT")
-	if portstr == "" {
-		portstr = "3306"
-	}
-	port, err := strconv.Atoi(portstr)
-	if err != nil {
-		log.Fatalf("Failed to read DB port number from an environment variable ISUTAR_DB_PORT.\nError: %s", err.Error())
-	}
+
 	user := os.Getenv("ISUTAR_DB_USER")
 	if user == "" {
 		user = "root"
@@ -96,8 +89,8 @@ func main() {
 	}
 
 	db, err = sql.Open("mysql", fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s?loc=Local&parseTime=true",
-		user, password, host, port, dbname,
+		"%s:%s@unix(%s)/%s?loc=Local&parseTime=true&interpolateParams=true&collation=utf8mb4_bin",
+		user, password, dbunix, dbname,
 	))
 	if err != nil {
 		log.Fatalf("Failed to connect to DB: %s.", err.Error())
