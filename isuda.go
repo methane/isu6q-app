@@ -451,8 +451,8 @@ func main() {
 	var err error
 	db, err = sql.Open("mysql", dsn)
 	panicIf(err)
-	db.SetMaxOpenConns(8)
-	db.SetMaxIdleConns(8)
+	db.SetMaxOpenConns(16)
+	db.SetMaxIdleConns(16)
 
 	for {
 		err := db.Ping()
