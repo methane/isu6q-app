@@ -361,7 +361,7 @@ func loadStars(keyword string) []*Star {
 	if err != nil {
 		log.Println(url)
 		log.Println(data)
-		//panicIf(err)
+		panicIf(err)
 	}
 	return data.Result
 }
