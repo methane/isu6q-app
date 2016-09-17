@@ -1,0 +1,42 @@
+#!/bin/bash -x
+SCRIPT_DIR=$(cd $(dirname $0) && pwd)
+cd $SCRIPT_DIR
+
+mkdir -p ./htmldump/tmp
+mkdir -p ./htmldump/ref
+
+if [ "$1" = "ref" ]; then
+  rm ./htmldump/ref/*
+  cd ./htmldump/ref
+else
+  rm ./htmldump/tmp/*
+  cd ./htmldump/tmp
+fi
+
+curl localhost/initialize?noprofile
+CURL="curl -sSL -c cookie.txt -w %{time_total}\\n"
+$CURL localhost -o get-index.html
+$CURL localhost/robots.txt -o get-robots.html
+$CURL localhost/keyword/%E6%8A%80%E8%A1%93%E8%81%B7%E5%93%A1 -o get-keyword.html #技術職員
+$CURL localhost/register -o get-register.html
+$CURL localhost/login -o get-login.html
+$CURL -d "name=isucon123" -d "password=isucon123" localhost/register -o post-register-ok.html
+$CURL -d "name=isucon123" -d "password=isucon123" localhost/login -o post-login-ok.html
+$CURL localhost -o get-index2.html
+#$CURL --data-urlencode "keyword=技術" --data-urlencode "description=技術のでぃすくりぷしょん" localhost/keyword -o post-keyword-ok.html
+
+#$CURL localhost/mypage -o get-mypage.html
+#$CURL localhost -o get-index2.html
+#$CURL localhost/report -o get-report.html
+
+DIFF='diff -uBw'
+if [[ -x `which colordiff` ]]; then
+    DIFF='colordiff -uBw'
+fi
+
+if [ "$1" != "ref" ]; then
+  cd $SCRIPT_DIR
+  ls ./htmldump/ref | grep -v "cookie.txt" | while read line; do
+    $DIFF ./htmldump/ref/$line ./htmldump/tmp/$line
+  done
+fi
