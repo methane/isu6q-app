@@ -83,6 +83,8 @@ func initializeHandler(w http.ResponseWriter, r *http.Request) {
 	panicIf(err)
 	defer resp.Body.Close()
 
+	Startup()
+
 	re.JSON(w, http.StatusOK, map[string]string{"result": "ok"})
 }
 
