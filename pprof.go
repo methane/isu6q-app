@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"time"
+
+	_ "net/http/pprof"
 )
 
 /*
