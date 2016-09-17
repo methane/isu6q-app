@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf8"
 )
 
@@ -23,13 +24,31 @@ var (
 	mKwControl sync.Mutex
 	kwdList    KeywordArray
 
+	mUpdateReplacer sync.Mutex
+	repLastUpdated  time.Time
+
 	mKwReplacer                  sync.RWMutex
 	kwReplacer1st, kwReplacer2nd *strings.Replacer
 )
 
 func updateReplacer() {
+	now := time.Now()
+	mUpdateReplacer.Lock()
+	defer mUpdateReplacer.Unlock()
+
+	if repLastUpdated.After(now) {
+		return
+	}
+	repLastUpdated = time.Now()
+
 	reps1 := make([]string, 0, len(kwdList)*2)
 	reps2 := make([]string, 0, len(kwdList)*2)
+
+	mKwControl.Lock()
+	kws := kwdList[:]
+	mKwControl.Unlock()
+	sort.Sort(kws)
+
 	for i, k := range kwdList {
 		if k.holder == "" {
 			k.holder = fmt.Sprintf("isuda_%x", sha1.Sum([]byte(k.Key)))
@@ -55,10 +74,9 @@ func AddKeyword(key, link string) {
 
 	mKwControl.Lock()
 	kwdList = append(kwdList, k)
-	sort.Sort(kwdList)
+	mKwControl.Unlock()
 
 	updateReplacer()
-	mKwControl.Unlock()
 }
 
 func RemoveKeyword(key string) {
@@ -76,19 +94,16 @@ func RemoveKeyword(key string) {
 	}
 	kwdList[pos] = kwdList[len(kwdList)-1]
 	kwdList = kwdList[:len(kwdList)-1]
-	sort.Sort(kwdList)
+	mKwControl.Unlock()
 
 	updateReplacer()
-	mKwControl.Unlock()
 }
 
 func InitKeyword(kws KeywordArray) {
 	mKwControl.Lock()
 	kwdList = kws
-	sort.Sort(kwdList)
-
-	updateReplacer()
 	mKwControl.Unlock()
+	updateReplacer()
 }
 
 func ReplaceKeyword(c string) string {
