@@ -73,7 +73,7 @@ func authenticate(w http.ResponseWriter, r *http.Request) error {
 func initializeHandler(w http.ResponseWriter, r *http.Request) {
 	noprofile := r.URL.Query().Get("noprofile")
 	if noprofile == "" {
-		StartProfile(90 * time.Second)
+		////StartProfile(90 * time.Second)
 	}
 
 	_, err := db.Exec(`DELETE FROM entry WHERE id > 7101`)

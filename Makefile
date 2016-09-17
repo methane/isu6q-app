@@ -8,7 +8,7 @@ deps:
 	go get github.com/unrolled/render
 
 isuda: deps
-	go build -o isuda isuda.go type.go util.go pprof.go keywords.go
+	go build -o isuda isuda.go type.go util.go keywords.go
 
 isutar: deps
 	go build -o isutar isutar.go type.go util.go
