@@ -13,15 +13,16 @@ else
   cd ./htmldump/tmp
 fi
 
-curl localhost/initialize?noprofile
+curl localhost/initialize?noprofile=1
 CURL="curl -sSL -c cookie.txt -w %{time_total}\\n"
 $CURL localhost -o get-index.html
 $CURL localhost/robots.txt -o get-robots.html
 $CURL localhost/keyword/%E6%8A%80%E8%A1%93%E8%81%B7%E5%93%A1 -o get-keyword.html #技術職員
 $CURL localhost/register -o get-register.html
 $CURL localhost/login -o get-login.html
-$CURL -d "name=isucon123" -d "password=isucon123" localhost/register -o post-register-ok.html
-$CURL -d "name=isucon123" -d "password=isucon123" localhost/login -o post-login-ok.html
+#$CURL -d "name=isucon123" -d "password=isucon123" localhost/register -o post-register-ok.html
+#$CURL -d "name=isucon123" -d "password=isucon123" localhost/login -o post-login-ok.html
+$CURL -d "name=motemen" -d "password=motemen" localhost/login -o post-login-ok.html
 $CURL localhost -o get-index2.html
 #$CURL --data-urlencode "keyword=技術" --data-urlencode "description=技術のでぃすくりぷしょん" localhost/keyword -o post-keyword-ok.html
 
