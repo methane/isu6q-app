@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"html/template"
 	"log"
 	"math"
@@ -317,7 +318,8 @@ func keywordByKeywordDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 func keywordLink(k string) string {
 	ke := pathURIEscape(k)
-	return fmt.Sprintf(`<a href="http://%s/keywords/%s">%s</a>`, HostName, ke)
+	ku := html.EscapeString(k)
+	return fmt.Sprintf(`<a href="http://%s/keywords/%s">%s</a>`, HostName, ke, ku)
 }
 
 func Startup() {
