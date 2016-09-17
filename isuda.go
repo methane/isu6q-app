@@ -358,9 +358,9 @@ func loadStars(keyword string) []*Star {
 		Result []*Star `json:result`
 	}
 	err = json.NewDecoder(resp.Body).Decode(&data)
+	log.Println(keyword, url)
+	log.Println(data)
 	if err != nil {
-		log.Println(url)
-		log.Println(data)
 		panicIf(err)
 	}
 	return data.Result
