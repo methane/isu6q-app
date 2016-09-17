@@ -319,7 +319,7 @@ func keywordByKeywordDeleteHandler(w http.ResponseWriter, r *http.Request) {
 func keywordLink(k string) string {
 	ke := pathURIEscape(k)
 	ku := html.EscapeString(k)
-	return fmt.Sprintf(`<a href="http://%s/keywords/%s">%s</a>`, HostName, ke, ku)
+	return fmt.Sprintf(`<a href="http://%s/keyword/%s">%s</a>`, HostName, ke, ku)
 }
 
 func Startup() {
