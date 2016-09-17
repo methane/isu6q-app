@@ -16,6 +16,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Songmu/strrand"
@@ -87,6 +88,40 @@ func initializeHandler(w http.ResponseWriter, r *http.Request) {
 	re.JSON(w, http.StatusOK, map[string]string{"result": "ok"})
 }
 
+var (
+	mTopEnts     sync.Mutex
+	topEntsCache []*Entry
+	topEntsLast  time.Time
+)
+
+func getTopEntries() []*Entry {
+	now := time.Now()
+	mTopEnts.Lock()
+	defer mTopEnts.Unlock()
+	if topEntsLast.After(now) {
+		return topEntsCache
+	}
+	topEntsLast = time.Now()
+
+	rows, err := db.Query("SELECT * FROM entry ORDER BY updated_at DESC LIMIT 10")
+	if err != nil {
+		panicIf(err)
+	}
+	defer rows.Close()
+
+	entries := make([]*Entry, 0, 10)
+	for rows.Next() {
+		e := Entry{}
+		err := rows.Scan(&e.ID, &e.AuthorID, &e.Keyword, &e.Description, &e.UpdatedAt, &e.CreatedAt)
+		panicIf(err)
+		e.Html = htmlify(e.Description)
+		e.Stars = loadStars(e.Keyword)
+		entries = append(entries, &e)
+	}
+	topEntsCache = entries
+	return entries
+}
+
 func topHandler(w http.ResponseWriter, r *http.Request) {
 	if err := setName(w, r); err != nil {
 		forbidden(w)
@@ -100,27 +135,33 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	page, _ := strconv.Atoi(p)
 
-	rows, err := db.Query(fmt.Sprintf(
-		"SELECT * FROM entry ORDER BY updated_at DESC LIMIT %d OFFSET %d",
-		perPage, perPage*(page-1),
-	))
-	if err != nil && err != sql.ErrNoRows {
-		panicIf(err)
+	var entries []*Entry
+
+	if page == 0 {
+		entries = getTopEntries()
+	} else {
+		rows, err := db.Query(fmt.Sprintf(
+			"SELECT * FROM entry ORDER BY updated_at DESC LIMIT %d OFFSET %d",
+			perPage, perPage*(page-1),
+		))
+		if err != nil && err != sql.ErrNoRows {
+			panicIf(err)
+		}
+		entries := make([]*Entry, 0, 10)
+		for rows.Next() {
+			e := Entry{}
+			err := rows.Scan(&e.ID, &e.AuthorID, &e.Keyword, &e.Description, &e.UpdatedAt, &e.CreatedAt)
+			panicIf(err)
+			e.Html = htmlify(e.Description)
+			e.Stars = loadStars(e.Keyword)
+			entries = append(entries, &e)
+		}
+		rows.Close()
 	}
-	entries := make([]*Entry, 0, 10)
-	for rows.Next() {
-		e := Entry{}
-		err := rows.Scan(&e.ID, &e.AuthorID, &e.Keyword, &e.Description, &e.UpdatedAt, &e.CreatedAt)
-		panicIf(err)
-		e.Html = htmlify(w, r, e.Description)
-		e.Stars = loadStars(e.Keyword)
-		entries = append(entries, &e)
-	}
-	rows.Close()
 
 	var totalEntries int
 	row := db.QueryRow(`SELECT COUNT(*) FROM entry`)
-	err = row.Scan(&totalEntries)
+	err := row.Scan(&totalEntries)
 	if err != nil && err != sql.ErrNoRows {
 		panicIf(err)
 	}
@@ -270,7 +311,7 @@ func keywordByKeywordHandler(w http.ResponseWriter, r *http.Request) {
 		notFound(w)
 		return
 	}
-	e.Html = htmlify(w, r, e.Description)
+	e.Html = htmlify(e.Description)
 	e.Stars = loadStars(e.Keyword)
 
 	re.HTML(w, http.StatusOK, "keyword", struct {
@@ -336,7 +377,7 @@ func Startup() {
 	InitKeyword(kws)
 }
 
-func htmlify(w http.ResponseWriter, r *http.Request, content string) string {
+func htmlify(content string) string {
 	if content == "" {
 		return ""
 	}
