@@ -91,7 +91,7 @@ func initializeHandler(w http.ResponseWriter, r *http.Request) {
 var (
 	mTopEnts     sync.Mutex
 	topEntsCache []*Entry
-	topEntsLast  time.Time
+	topEntsLast  time.Time = time.Now()
 )
 
 func getTopEntries() []*Entry {
@@ -137,7 +137,7 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 
 	var entries []*Entry
 
-	if page == 0 {
+	if page == 1 {
 		entries = getTopEntries()
 	} else {
 		rows, err := db.Query(fmt.Sprintf(
@@ -147,7 +147,7 @@ func topHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil && err != sql.ErrNoRows {
 			panicIf(err)
 		}
-		entries := make([]*Entry, 0, 10)
+		entries = make([]*Entry, 0, 10)
 		for rows.Next() {
 			e := Entry{}
 			err := rows.Scan(&e.ID, &e.AuthorID, &e.Keyword, &e.Description, &e.UpdatedAt, &e.CreatedAt)
