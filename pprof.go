@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"runtime"
+	//"runtime"
 	"runtime/pprof"
 	"time"
 
@@ -71,7 +71,7 @@ func StartProfile(duration time.Duration) error {
 	if err := pprof.StartCPUProfile(f); err != nil {
 		return err
 	}
-	runtime.SetBlockProfileRate(1)
+	// runtime.SetBlockProfileRate(1)
 	isProfiling = true
 	if 0 < duration.Seconds() {
 		go func() {
@@ -93,23 +93,25 @@ func EndProfile() error {
 	}
 	isProfiling = false
 	pprof.StopCPUProfile()
-	runtime.SetBlockProfileRate(0)
+	// runtime.SetBlockProfileRate(0)
 	log.Println("Profile end")
 	defer func() {
 		go callOnEndProfile()
 	}()
 
-	mf, err := os.Create(memProfileFile)
-	if err != nil {
-		return err
-	}
-	pprof.WriteHeapProfile(mf)
+	/*
+		mf, err := os.Create(memProfileFile)
+		if err != nil {
+			return err
+		}
+		pprof.WriteHeapProfile(mf)
 
-	bf, err := os.Create(blockProfileFile)
-	if err != nil {
-		return err
-	}
-	pprof.Lookup("block").WriteTo(bf, 0)
+		bf, err := os.Create(blockProfileFile)
+		if err != nil {
+			return err
+		}
+		pprof.Lookup("block").WriteTo(bf, 0)
+	*/
 	return nil
 }
 
