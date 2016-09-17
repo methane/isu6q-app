@@ -7,14 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html"
 	"html/template"
 	"log"
 	"math"
 	"net/http"
 	"net/url"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -39,6 +37,8 @@ var (
 	db      *sql.DB
 	re      *render.Render
 	store   *sessions.CookieStore
+
+	HostName string
 
 	errInvalidUser = errors.New("Invalid User")
 )
@@ -82,6 +82,8 @@ func initializeHandler(w http.ResponseWriter, r *http.Request) {
 	resp, err := http.Get(fmt.Sprintf("%s/initialize", isutarEndpoint))
 	panicIf(err)
 	defer resp.Body.Close()
+
+	Startup()
 
 	re.JSON(w, http.StatusOK, map[string]string{"result": "ok"})
 }
@@ -176,6 +178,7 @@ func keywordPostHandler(w http.ResponseWriter, r *http.Request) {
 		author_id = ?, keyword = ?, description = ?, updated_at = NOW()
 	`, userID, keyword, description, userID, keyword, description)
 	panicIf(err)
+	AddKeyword(keyword, keywordLink(keyword))
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
@@ -307,43 +310,37 @@ func keywordByKeywordDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	_, err = db.Exec(`DELETE FROM entry WHERE keyword = ?`, keyword)
 	panicIf(err)
+
+	RemoveKeyword(keyword)
 	http.Redirect(w, r, "/", http.StatusFound)
+}
+
+func keywordLink(k string) string {
+	ke := pathURIEscape(k)
+	return fmt.Sprintf(`<a href="http://%s/keywords/%s">%s</a>`, HostName, ke)
+}
+
+func Startup() {
+	rows, err := db.Query("SELECT keyword FROM entry")
+	panicIf(err)
+
+	kws := make(KeywordArray, 0, 1000)
+	for rows.Next() {
+		var k string
+		err := rows.Scan(&k)
+		panicIf(err)
+		kws = append(kws, Keyword{Key: k, Link: keywordLink(k)})
+	}
+	rows.Close()
+
+	InitKeyword(kws)
 }
 
 func htmlify(w http.ResponseWriter, r *http.Request, content string) string {
 	if content == "" {
 		return ""
 	}
-	rows, err := db.Query(`
-		SELECT * FROM entry ORDER BY CHARACTER_LENGTH(keyword) DESC
-	`)
-	panicIf(err)
-	entries := make([]*Entry, 0, 500)
-	for rows.Next() {
-		e := Entry{}
-		err := rows.Scan(&e.ID, &e.AuthorID, &e.Keyword, &e.Description, &e.UpdatedAt, &e.CreatedAt)
-		panicIf(err)
-		entries = append(entries, &e)
-	}
-	rows.Close()
-
-	keywords := make([]string, 0, 500)
-	for _, entry := range entries {
-		keywords = append(keywords, regexp.QuoteMeta(entry.Keyword))
-	}
-	re := regexp.MustCompile("(" + strings.Join(keywords, "|") + ")")
-	kw2sha := make(map[string]string)
-	content = re.ReplaceAllStringFunc(content, func(kw string) string {
-		kw2sha[kw] = "isuda_" + fmt.Sprintf("%x", sha1.Sum([]byte(kw)))
-		return kw2sha[kw]
-	})
-	content = html.EscapeString(content)
-	for kw, hash := range kw2sha {
-		u, err := r.URL.Parse(baseUrl.String() + "/keyword/" + pathURIEscape(kw))
-		panicIf(err)
-		link := fmt.Sprintf("<a href=\"%s\">%s</a>", u, html.EscapeString(kw))
-		content = strings.Replace(content, hash, link, -1)
-	}
+	content = ReplaceKeyword(content)
 	return strings.Replace(content, "\n", "<br />\n", -1)
 }
 
@@ -419,14 +416,30 @@ func main() {
 	}
 
 	db, err = sql.Open("mysql", fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s?loc=Local&parseTime=true",
+		"%s:%s@tcp(%s:%d)/%s?loc=Local&parseTime=true&interpolateParams=true&collation=utf8mb4_bin",
 		user, password, host, port, dbname,
 	))
+	db.SetMaxOpenConns(8)
+	db.SetMaxIdleConns(8)
+
+	for {
+		err := db.Ping()
+		if err != nil {
+			break
+		}
+		log.Println(err)
+	}
+
+	HostName = os.Getenv("ISUHOST")
+	if HostName == "" {
+		HostName = "127.0.0.1"
+	}
+	Startup()
+
 	if err != nil {
 		log.Fatalf("Failed to connect to DB: %s.", err.Error())
 	}
 	db.Exec("SET SESSION sql_mode='TRADITIONAL,NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY'")
-	db.Exec("SET NAMES utf8mb4")
 
 	isutarEndpoint = os.Getenv("ISUTAR_ORIGIN")
 	if isutarEndpoint == "" {
